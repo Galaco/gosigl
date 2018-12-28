@@ -11,45 +11,45 @@ It provides simplified functions for creating textures, VAO and VBOs, and shader
 Provides functions for creating and binding Texture2D and Cube_Map_Textures.
 Creating and binding a Texture2D can be done as follows:
 ```go
-buf := gosgl.CreateTexture2D(
-		gosgl.TextureSlot(0),   // Assign texture slot
+buf := gosigl.CreateTexture2D(
+		gosigl.TextureSlot(0),   // Assign texture slot
 		width,                  // texture width
 		height,                 // texture height
 		pixelData,              // []byte raw colour data
-		gosgl.RGB,              // colour data format
+		gosigl.RGB,              // colour data format
 		false)                  // true = clamp to edge, false = repeat
-gosgl.BindTexture2D(gosgl.TextureSlot(0), buf)
+gosigl.BindTexture2D(gosigl.TextureSlot(0), buf)
 ```
 Cubemaps are very similar:
 ```go
-buf := gosgl.CreateTextureCubemap(
-	gosgl.TextureSlot(0),   // Assign texture slot
+buf := gosigl.CreateTextureCubemap(
+	gosigl.TextureSlot(0),   // Assign texture slot
 	width,                  // texture width
     height,                 // texture height
     pixelData,              // [6][]byte raw colour data
-    gosgl.RGB,              // colour data format
+    gosigl.RGB,              // colour data format
 	true)
-gosgl.BindTextureCubemap(gosgl.TextureSlot(0), buf)
+gosigl.BindTextureCubemap(gosigl.TextureSlot(0), buf)
 ```
 
 #### Mesh
 Simple methods are available for VBO and VAO generation, as follows:
 ```go
-mesh := gosgl.NewMesh(vertices) // vertices = []float32
-gosgl.CreateVertexAttribute(mesh, uvs, 2) // uvs = []float32, 2 = numPerVertex
-gosgl.CreateVertexAttribute(mesh, normals, 3)
-gosgl.FinishMesh()
+mesh := gosigl.NewMesh(vertices) // vertices = []float32
+gosigl.CreateVertexAttribute(mesh, uvs, 2) // uvs = []float32, 2 = numPerVertex
+gosigl.CreateVertexAttribute(mesh, normals, 3)
+gosigl.FinishMesh()
 ```
 
 To draw:
 ```go
-gosgl.BindMesh(mesh)            // bind vbo
-gosgl.DrawArray(offset, length) // draw from bound
+gosigl.BindMesh(mesh)            // bind vbo
+gosigl.DrawArray(offset, length) // draw from bound
 ```
 
 To delete:
 ```go
-gosgl.DeleteMesh(mesh)
+gosigl.DeleteMesh(mesh)
 ```
 
 #### Shader
