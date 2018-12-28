@@ -1,4 +1,4 @@
-# Gosgl
+# Gosigl
 
 Gosigl (Go SImple openGL) is an somewhat opinionated Go wrapper for OpenGL with emphasis on simple. It's purpose is to make creating simple OpenGL programs really goddamn
 easy. It doesn't provide a whole lot of functionality, but it's really quick and simple to get a basic renderable
