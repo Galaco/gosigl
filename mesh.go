@@ -72,6 +72,10 @@ func CreateVertexAttribute(mesh *VertexObject, bufferData []float32, stride int)
 	mesh.numAttributes++
 }
 
+func CreateVertexAttributeArrayBuffer(mesh *VertexObject, bufferData []float32, stride int) {
+	CreateVertexAttribute(mesh, bufferData, stride)
+}
+
 func BindVertexAttributes(mesh *VertexObject) {
 	opengl.EnableVertexAttribArray(0)
 	opengl.BindVertexArray(uint32(mesh.AttribId[0]))
