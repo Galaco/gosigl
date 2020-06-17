@@ -2,15 +2,18 @@ package gosigl
 
 import (
 	opengl "github.com/go-gl/gl/v4.1-core/gl"
+	"math"
 )
 
 type VertexBufferObject uint32
 type VertexArrayObject uint32
+type ElementArrayObject uint32
 type VertexObject struct {
 	Id VertexBufferObject
 	AttribId [32]VertexArrayObject
 	attribStride [32]int
 	numAttributes int
+	elementArrayBuffer ElementArrayObject
 }
 
 const Line = uint32(opengl.LINE)
@@ -30,9 +33,18 @@ func DrawArray(offset int, length int) {
 	opengl.DrawArrays(vertexDrawMode, int32(offset), int32(length))
 }
 
+func DrawElements(count int, offset int, indices []uint32) {
+	if offset > 0 {
+		opengl.DrawElements(opengl.TRIANGLES, int32(count), opengl.UNSIGNED_INT, opengl.Ptr(indices[offset]))
+	} else {
+		opengl.DrawElements(opengl.TRIANGLES, int32(count), opengl.UNSIGNED_INT, opengl.Ptr(nil))
+	}
+}
+
 func NewMesh(vertices []float32) (mesh *VertexObject) {
 	mesh = &VertexObject{
 		numAttributes: 0,
+		elementArrayBuffer: math.MaxUint32,
 	}
 	vbo := uint32(0)
 	opengl.GenBuffers(1, &vbo)
@@ -76,6 +88,15 @@ func CreateVertexAttributeArrayBuffer(mesh *VertexObject, bufferData []float32, 
 	CreateVertexAttribute(mesh, bufferData, stride)
 }
 
+func SetElementArrayAttribute(mesh *VertexObject, bufferData []uint32) {
+	buffer := uint32(0)
+	opengl.GenBuffers(1, &buffer)
+	opengl.BindBuffer(opengl.ELEMENT_ARRAY_BUFFER, buffer)
+	opengl.BufferData(opengl.ELEMENT_ARRAY_BUFFER, len(bufferData)*4, opengl.Ptr(bufferData), opengl.STATIC_DRAW)
+
+	mesh.elementArrayBuffer = ElementArrayObject(buffer)
+}
+
 func BindVertexAttributes(mesh *VertexObject) {
 	opengl.EnableVertexAttribArray(0)
 	opengl.BindVertexArray(uint32(mesh.AttribId[0]))
@@ -84,6 +105,10 @@ func BindVertexAttributes(mesh *VertexObject) {
 		opengl.EnableVertexAttribArray(uint32(i))
 		opengl.BindBuffer(opengl.ARRAY_BUFFER, uint32(mesh.AttribId[i]))
 		opengl.VertexAttribPointer(uint32(i), int32(mesh.attribStride[i]), opengl.FLOAT, false, 0, nil)
+	}
+
+	if mesh.elementArrayBuffer != math.MaxUint32 {
+		opengl.BindBuffer(opengl.ELEMENT_ARRAY_BUFFER, uint32(mesh.elementArrayBuffer))
 	}
 }
 
