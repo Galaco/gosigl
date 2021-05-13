@@ -98,8 +98,8 @@ func SetElementArrayAttribute(mesh *VertexObject, bufferData []uint32) {
 }
 
 func BindVertexAttributes(mesh *VertexObject) {
-	opengl.EnableVertexAttribArray(0)
 	opengl.BindVertexArray(uint32(mesh.AttribId[0]))
+	opengl.EnableVertexAttribArray(0)
 
 	for i := 1; i < mesh.numAttributes; i++ {
 		opengl.EnableVertexAttribArray(uint32(i))
