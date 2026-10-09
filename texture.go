@@ -79,11 +79,21 @@ func BindTextureCubemap(slot TextureSlotId, id TextureBindingId) {
 }
 
 func CreateTexture2D(slot TextureSlotId, width int, height int, pixelData []byte, pixelFormat PixelFormat, clampToEdge bool) TextureBindingId {
+	return CreateTexture2DMipmaps(slot, width, height, [][]byte{pixelData}, pixelFormat, clampToEdge)
+}
+
+// CreateTexture2DMipmaps creates a texture from each of its mipmaps, from the largest, width x height, to the smallest.
+// Each is half the size of the one before, to no smaller than 1x1. A texture with more than one mipmap is filtered
+// trilinearly between them.
+func CreateTexture2DMipmaps(slot TextureSlotId, width int, height int, mipmaps [][]byte, pixelFormat PixelFormat, clampToEdge bool) TextureBindingId {
 	textureBuffer := uint32(0)
 	opengl.GenTextures(1, &textureBuffer)
 	BindTexture2D(slot, TextureBindingId(textureBuffer))
 
-	createTexture(opengl.TEXTURE_2D, opengl.TEXTURE_2D, width, height, pixelData, pixelFormat, clampToEdge)
+	setTextureParameters(opengl.TEXTURE_2D, len(mipmaps), clampToEdge)
+	for level, pixelData := range mipmaps {
+		uploadTextureImage(opengl.TEXTURE_2D, level, mipmapSize(width, level), mipmapSize(height, level), pixelData, pixelFormat)
+	}
 
 	return TextureBindingId(textureBuffer)
 }
@@ -93,19 +103,32 @@ func CreateTextureCubemap(slot TextureSlotId, width int, height int, pixelData [
 	opengl.GenTextures(1, &textureBuffer)
 	BindTextureCubemap(slot, TextureBindingId(textureBuffer))
 
-	createTexture(opengl.TEXTURE_CUBE_MAP, cubemapSlots[0], width, height, pixelData[0], pixelFormat, clampToEdge)
-	createTexture(opengl.TEXTURE_CUBE_MAP, cubemapSlots[1], width, height, pixelData[1], pixelFormat, clampToEdge)
-	createTexture(opengl.TEXTURE_CUBE_MAP, cubemapSlots[2], width, height, pixelData[2], pixelFormat, clampToEdge)
-	createTexture(opengl.TEXTURE_CUBE_MAP, cubemapSlots[3], width, height, pixelData[3], pixelFormat, clampToEdge)
-	createTexture(opengl.TEXTURE_CUBE_MAP, cubemapSlots[4], width, height, pixelData[4], pixelFormat, clampToEdge)
-	createTexture(opengl.TEXTURE_CUBE_MAP, cubemapSlots[5], width, height, pixelData[5], pixelFormat, clampToEdge)
+	setTextureParameters(opengl.TEXTURE_CUBE_MAP, 1, clampToEdge)
+	for face, slot := range cubemapSlots {
+		uploadTextureImage(uint32(slot), 0, width, height, pixelData[face], pixelFormat)
+	}
 
 	return TextureBindingId(textureBuffer)
 }
 
-func createTexture(textureType uint32, target TextureSlotId, width int, height int, pixelData []byte, pixelFormat PixelFormat, clampToEdge bool) {
-	opengl.TexParameteri(textureType, opengl.TEXTURE_MIN_FILTER, opengl.LINEAR)
+// mipmapSize returns the size of a mipmap level of a texture of size, which halves each level to no smaller than 1
+func mipmapSize(size int, level int) int {
+	if size>>level < 1 {
+		return 1
+	}
+	return size >> level
+}
+
+// setTextureParameters sets how the bound texture of textureType, which has the given number of mipmaps, is sampled
+func setTextureParameters(textureType uint32, mipmaps int, clampToEdge bool) {
+	if mipmaps > 1 {
+		opengl.TexParameteri(textureType, opengl.TEXTURE_MIN_FILTER, opengl.LINEAR_MIPMAP_LINEAR)
+	} else {
+		opengl.TexParameteri(textureType, opengl.TEXTURE_MIN_FILTER, opengl.LINEAR)
+	}
 	opengl.TexParameteri(textureType, opengl.TEXTURE_MAG_FILTER, opengl.LINEAR)
+	// A texture is only complete with every mipmap up to its max level
+	opengl.TexParameteri(textureType, opengl.TEXTURE_MAX_LEVEL, int32(mipmaps-1))
 
 	if clampToEdge == true {
 		opengl.TexParameteri(textureType, opengl.TEXTURE_WRAP_S, opengl.CLAMP_TO_EDGE)
@@ -114,11 +137,14 @@ func createTexture(textureType uint32, target TextureSlotId, width int, height i
 		opengl.TexParameteri(textureType, opengl.TEXTURE_WRAP_S, opengl.REPEAT)
 		opengl.TexParameteri(textureType, opengl.TEXTURE_WRAP_T, opengl.REPEAT)
 	}
+}
 
+// uploadTextureImage uploads one mipmap level of the bound texture's image for target
+func uploadTextureImage(target uint32, level int, width int, height int, pixelData []byte, pixelFormat PixelFormat) {
 	if isPixelFormatCompressed(pixelFormat) {
 		opengl.CompressedTexImage2D(
-			uint32(target),
-			0,
+			target,
+			int32(level),
 			uint32(pixelFormat),
 			int32(width),
 			int32(height),
@@ -126,9 +152,11 @@ func createTexture(textureType uint32, target TextureSlotId, width int, height i
 			int32(len(pixelData)),
 			opengl.Ptr(pixelData))
 	} else {
+		// Rows are packed tightly. The rows of small RGB mipmaps are not a multiple of the default 4 bytes long.
+		opengl.PixelStorei(opengl.UNPACK_ALIGNMENT, 1)
 		opengl.TexImage2D(
-			uint32(target),
-			0,
+			target,
+			int32(level),
 			opengl.RGBA,
 			int32(width),
 			int32(height),
