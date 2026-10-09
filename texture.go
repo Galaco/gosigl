@@ -119,10 +119,34 @@ func mipmapSize(size int, level int) int {
 	return size >> level
 }
 
+// maxTextureAnisotropy is the most samples anisotropic filtering takes, or 0 before it is known
+var maxTextureAnisotropy float32
+
+// maxAnisotropy returns the most samples anisotropic filtering takes: as many as the hardware supports, up to 16. It is
+// 1, no anisotropic filtering, without support for it.
+func maxAnisotropy() float32 {
+	if maxTextureAnisotropy == 0 {
+		maxTextureAnisotropy = 1
+		supported := float32(0)
+		opengl.GetFloatv(opengl.MAX_TEXTURE_MAX_ANISOTROPY, &supported)
+		if opengl.GetError() == opengl.NO_ERROR && supported > 1 {
+			maxTextureAnisotropy = supported
+			if maxTextureAnisotropy > 16 {
+				maxTextureAnisotropy = 16
+			}
+		}
+	}
+	return maxTextureAnisotropy
+}
+
 // setTextureParameters sets how the bound texture of textureType, which has the given number of mipmaps, is sampled
 func setTextureParameters(textureType uint32, mipmaps int, clampToEdge bool) {
 	if mipmaps > 1 {
 		opengl.TexParameteri(textureType, opengl.TEXTURE_MIN_FILTER, opengl.LINEAR_MIPMAP_LINEAR)
+		// Sample more of a texture seen at an angle, so that it is not blurred along it
+		if anisotropy := maxAnisotropy(); anisotropy > 1 {
+			opengl.TexParameterf(textureType, opengl.TEXTURE_MAX_ANISOTROPY, anisotropy)
+		}
 	} else {
 		opengl.TexParameteri(textureType, opengl.TEXTURE_MIN_FILTER, opengl.LINEAR)
 	}
