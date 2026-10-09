@@ -33,12 +33,10 @@ func DrawArray(offset int, length int) {
 	opengl.DrawArrays(vertexDrawMode, int32(offset), int32(length))
 }
 
+// DrawElements draws count indices from the bound mesh's element buffer, starting at index offset.
+// indices is unused: the core profile draws from the bound element buffer, never from client memory.
 func DrawElements(count int, offset int, indices []uint32) {
-	if offset > 0 {
-		opengl.DrawElements(opengl.TRIANGLES, int32(count), opengl.UNSIGNED_INT, opengl.Ptr(indices[offset]))
-	} else {
-		opengl.DrawElements(opengl.TRIANGLES, int32(count), opengl.UNSIGNED_INT, opengl.Ptr(nil))
-	}
+	opengl.DrawElements(opengl.TRIANGLES, int32(count), opengl.UNSIGNED_INT, opengl.PtrOffset(offset*4))
 }
 
 func NewMesh(vertices []float32) (mesh *VertexObject) {
@@ -120,11 +118,17 @@ func DeleteMesh(mesh *VertexObject) {
 	vao := uint32(mesh.AttribId[0])
 	opengl.DeleteVertexArrays(1, &vao)
 
+	// AttribId[0] is the vertex array; the vertex positions are in mesh.Id
+	vbo := uint32(mesh.Id)
+	opengl.DeleteBuffers(1, &vbo)
+
 	for i := 1; i < mesh.numAttributes; i++ {
-		buf := uint32(mesh.AttribId[1])
+		buf := uint32(mesh.AttribId[i])
 		opengl.DeleteBuffers(1, &buf)
 	}
 
-
-
+	if mesh.elementArrayBuffer != math.MaxUint32 {
+		ebo := uint32(mesh.elementArrayBuffer)
+		opengl.DeleteBuffers(1, &ebo)
+	}
 }
